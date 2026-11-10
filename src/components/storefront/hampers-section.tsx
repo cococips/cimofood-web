@@ -71,9 +71,10 @@ export function HampersSection({
 
   return (
     <section
-      id="hampers-lebaran"
-      className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#FFFBEB] via-[#FEF3C7]/70 to-[#FFEDD5] border-2 border-[#F59E0B]/50 p-6 sm:p-10 shadow-lg shadow-amber-950/5 space-y-8"
+      id="hampers"
+      className="scroll-mt-24 relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#FFFBEB] via-[#FEF3C7]/70 to-[#FFEDD5] border-2 border-[#F59E0B]/50 p-6 sm:p-10 shadow-lg shadow-amber-950/5 space-y-8"
     >
+      <span id="hampers-lebaran" className="sr-only" />
       {/* Section Header */}
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
         <div className="space-y-2 max-w-2xl">
