@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   Flame,
   Gift,
-  LayoutDashboard,
   PackageCheck,
   PackageSearch,
   Search,
@@ -346,14 +345,14 @@ export default function HomePage() {
                   Lacak Pesanan
                 </Button>
               </Link>
-              <Link href="/admin" className="w-full">
+              <Link href="/login" className="w-full">
                 <Button
                   variant="outline"
                   size="md"
                   fullWidth
-                  leftIcon={<LayoutDashboard className="h-4 w-4" />}
+                  leftIcon={<Users className="h-4 w-4" />}
                 >
-                  Dasbor Admin
+                  Masuk Mitra / Admin
                 </Button>
               </Link>
             </div>
@@ -419,8 +418,8 @@ export default function HomePage() {
                 </Link>
               </li>
               <li>
-                <Link href="/admin" className="hover:text-amber-400">
-                  Dasbor Admin &amp; POS Kasir
+                <Link href="/login" className="hover:text-amber-400">
+                  Masuk Akun Mitra / Admin
                 </Link>
               </li>
             </ul>
@@ -432,7 +431,7 @@ export default function HomePage() {
             © 2026 CimoFood × UMKM Cimoring (Sejak 2017). Seluruh hak cipta
             dilindungi.
           </span>
-          <span>Dibangun dengan Mobile-First Storefront &amp; Dual-Mode Data Layer</span>
+          <span>Kemasan Aman SOP 4 Lapis • P-IRT &amp; Halal Resmi</span>
         </div>
       </footer>
 

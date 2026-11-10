@@ -14,51 +14,41 @@
 | **Fase 4** | Dasbor Admin Laptop/Tablet-First, Kasir POS Offline, Manajemen Stok, & Laporan Keuangan | **SELESAI (100%)** | 10 November 2026 |
 | **Fase 5** | Portal Reseller Tanpa Minimal Order, Target Bonus, & Halaman Giveaway | **SELESAI (100%)** | 10 November 2026 |
 | **Audit & Refactor** | Cleanup Struktur Folder & Redesign Navbar Standar Industri (Anti Text-Wrapping) | **SELESAI (100%)** | 10 November 2026 |
+| **RBAC & Auth** | Upgrade Role-Based Access Control (RBAC) & Authentication Standar Industri | **SELESAI (100%)** | 10 November 2026 |
 
 ---
 
-## Detail Penyelesaian Audit & Refactoring Kebersihan Kode & Navbar
+## Detail Penyelesaian Upgrade RBAC & Authentication Standar Industri
 
-### 1. Cleanup Struktur Folder & Kode
-- Menghapus folder duplikat `utils/` di root directory (di luar `src/`). Seluruh konfigurasi dan helper Supabase kini terpusat di dalam `src/lib/supabase.ts` dan `src/utils/supabase/` (`client.ts`, `server.ts`, `middleware.ts`).
-- Menghapus 5 file SVG boilerplate bawaan Next.js yang tidak terpakai di dalam folder `public/` (`file.svg`, `globe.svg`, `next.svg`, `vercel.svg`, `window.svg`).
+### 1. Authentication & Role Store (`src/store/auth-store.ts`)
+- Mendukung 3 role pengguna secara persisten di LocalStorage (`cimofood-auth-storage-v1`) dan tersinkronisasi otomatis dengan `src/store/cart-store.ts`:
+  - `guest` (Pembeli Eceran Publik — default tanpa perlu login; harga terkunci ke **Harga Eceran Web**).
+  - `reseller` (Mitra Reseller yang sudah login; harga otomatis terkunci ke **Harga Grosir Reseller** beserta `referral_code` aktif).
+  - `admin` (Pengelola CimoFood & Owner UMKM Cimoring; memiliki akses penuh ke `/admin` dan simulasi harga di dalam panel admin).
 
-### 2. Redesign Navbar Standar Industri (`src/components/storefront/navbar.tsx`)
-- **Top Utility Bar (Berlatar Gelap)**:
-  - Sisi kiri menampilkan informasi promo resmi UMKM Cimoring.
-  - Sisi kanan menampilkan *compact pill switcher* **"Harga Web | Harga Reseller"**, *badge* status **"Supabase Cloud Aktif"**, serta tombol akses cepat **"Dasbor Admin"** (`/admin`).
-- **Logo Brand Anti Text-Wrapping**:
-  - Logo **"CimoFood"** dan sub-teks **"Asli Sejak 2017 • P-IRT & Halal"** menggunakan `whitespace-nowrap` dan `shrink-0` sehingga selalu tampil rapi dalam 1 baris.
-- **Menu Navigasi Utama Pelanggan 1 Baris (`whitespace-nowrap`)**:
-  - Menampilkan tepat 5 menu utama pelanggan dengan label ringkas anti-terlipat:
-    1. `Katalog` (`/`)
-    2. `Hampers` (`/#hampers`)
-    3. `Giveaway` (`/giveaway`)
-    4. `Lacak Pesanan` (`/track`)
-    5. `Reseller` (`/reseller`)
-- **Active State Menu dengan `usePathname()`**:
-  - Menu yang sedang aktif memiliki *visual highlight* kontras (`bg-orange-50 text-orange-700 font-semibold border-b-2 border-orange-600`), sedangkan menu tidak aktif berwarna netral (`text-stone-600 hover:text-orange-600 hover:bg-orange-50/50`) dengan ikon yang mengikuti warna teks aktif/netral.
-- **Responsive Mobile Menu Drawer**:
-  - Pada layar tablet kecil/HP (`lg:hidden`), navigasi otomatis masuk ke dalam Hamburger Menu Drawer yang rapi.
+### 2. Halaman Login & Pendaftaran Mitra (`/login` -> `src/app/login/page.tsx`)
+- Memiliki 2 Tab utama:
+  1. **"Masuk Akun (Reseller / Admin)"**: Validasi login untuk akun Admin (`admin@cimofood.id` dengan sandi `admincimo2026` $\rightarrow$ redirect ke `/admin`) dan akun Reseller terdaftar (`RINACIMO`, `SITIHOT`, `DEDIKRIUK`, Nomor WhatsApp, atau mitra baru $\rightarrow$ redirect ke `/reseller`).
+  2. **"Daftar Reseller Baru (Gratis)"**: Pendaftaran mitra baru tanpa biaya yang langsung mengaktifkan sesi `reseller` dan harga grosir sejak pcs pertama.
+- Dilengkapi bagian *collapsible/expandable* rapi di bagian bawah kartu login bertajuk **"Akses Cepat Pengujian (Khusus Tim & Dosen)"** untuk *1-click instant login* sebagai Admin Owner atau Reseller Aktif tanpa mengotori halaman publik.
+
+### 3. Pembersihan Top Bar & Navbar Publik (`src/components/storefront/navbar.tsx`)
+- Menghapus switcher developer `"Harga Web | Harga Reseller"` dan badge teknis `"Supabase Cloud Aktif"` dari Top Bar publik dan Mobile Drawer.
+- Top Bar Kiri mempertahankan informasi promo & garansi packing SOP 4 Lapis.
+- Top Bar Kanan menampilkan **"Jam Layanan: 08.00 - 20.00 WIB"**, link **"Bantuan WhatsApp"**, serta kontrol autentikasi dinamis sesuai role (`"Masuk Mitra / Admin"` untuk `guest`, badge `"Mode Harga Reseller Aktif"` + nama mitra + `"Keluar"` untuk `reseller`, atau badge `"Admin Aktif"` + `"Buka Panel Admin"` + `"Keluar"` untuk `admin`).
+
+### 4. Pemisahan Tampilan Halaman `/reseller` (`src/app/reseller/page.tsx`)
+- Menghapus kotak publik `"PILIH AKUN RESELLER AKTIF (SIMULASI LOGIN)"`.
+- Jika pengunjung berstatus `guest`: Menampilkan **Landing Page Kemitraan Reseller** profesional (keunggulan grosir tanpa minimal order, skema bonus 5%, kalkulator simulasi keuntungan, testimoni mitra, dan tombol CTA ke `/login?tab=register` atau `/login`).
+- Jika sudah login sebagai `reseller` (atau `admin`): Menampilkan **Dasbor Pribadi Reseller** lengkap (Progress Bar Target Bulanan, Kalkulator Komisi, Kode Referral Unik, Katalog Stok Harga Reseller, dan Marketing Kit Foto Promosi Siap Unduh).
+
+### 5. Proteksi Halaman `/admin` & Pemindahan Indikator Supabase (`src/components/admin/admin-dashboard.tsx`)
+- Memproteksi rute `/admin` (serta sub-rute `/admin/*`) sehingga pengguna non-admin yang mengakses `/admin` melihat layar **"Akses Terbatas Khusus Admin CimoFood"** dengan tombol menuju `/login?redirect=/admin`.
+- Memindahkan badge status teknis `"Supabase Cloud Aktif"` (`dataLayer.label`), tombol simulasi harga admin, dan tombol Logout Admin ke dalam Header `/admin`.
 
 ---
 
-## Detail Penyelesaian Fase 1 – Fase 5
-
-### Fase 5: Portal Reseller Tanpa Minimal Order & Halaman Giveaway
-- `src/app/reseller/page.tsx` — Portal Reseller Tanpa Minimal Order, Progress Bar Target Bulanan, Kalkulator Komisi/Bonus Otomatis, Katalog Harga Reseller, & Marketing Kit Foto Promosi Siap Unduh.
-- `src/app/giveaway/page.tsx` & `src/app/admin/giveaway/page.tsx` — Kampanye Giveaway 3 Tugas Follow `@cimoring`, Klaim Nomor Kupon Undian + Confetti, dan sinkronisasi otomatis ke Tab 5 di `/admin`.
-
-### Fase 4: Dasbor Admin Laptop/Tablet-First (`/admin`)
-- `src/components/admin/admin-dashboard.tsx` — Layout Sidebar + Sticky Topbar dengan 5 Tab Operasional:
-  1. *Tab Ringkasan & Analitik Keuangan* (4 KPI Card + Export Laporan ke Excel `.xlsx` Multi-Sheet)
-  2. *Tab Manajemen Pesanan 8 Tahap* (Input Ongkir & WA, Verifikasi Lunas, Setor Produsen, Checklist Wajib SOP 4 Lapis + Upload Foto, Input Resi)
-  3. *Tab Kasir Cepat / Touch POS Offline 1-Klik* (Tunai / QRIS)
-  4. *Tab Manajemen Stok & Harga 3 Tingkat* (Indikator peringatan otomatis jika Harga Web > Harga Shopee)
-  5. *Tab Peserta Giveaway & Mitra Reseller*
-
-### Fase 1 – Fase 3
-- `supabase/schema.sql`, `src/types/database.ts`, `src/lib/supabase.ts`, `src/lib/seed-data.ts`, `src/lib/data-service.ts`, `src/lib/utils.ts`, `src/store/cart-store.ts`
-- `src/components/ui/` (`button.tsx`, `badge.tsx`, `card.tsx`, `modal.tsx`, `toast.tsx`, `index.ts`)
-- `src/components/storefront/` (`navbar.tsx`, `hero-trust-bar.tsx`, `product-card.tsx`, `hampers-section.tsx`, `cart-drawer.tsx`, `index.ts`)
-- `src/app/page.tsx`, `src/app/checkout/page.tsx`, `src/app/track/page.tsx`, `src/app/track/[orderCode]/page.tsx`
+## Detail Penyelesaian Fase 1 – Fase 5 & Audit Sebelumnya
+- **Fase 1 – Fase 3**: `supabase/schema.sql`, `src/types/database.ts`, `src/lib/supabase.ts`, `src/lib/seed-data.ts`, `src/lib/data-service.ts`, `src/lib/utils.ts`, `src/store/cart-store.ts`, `src/components/ui/`, `src/components/storefront/`, `src/app/page.tsx`, `src/app/checkout/page.tsx`, `src/app/track/page.tsx`, `src/app/track/[orderCode]/page.tsx`.
+- **Fase 4**: `src/components/admin/admin-dashboard.tsx` & rute `/admin`, `/admin/reports`, `/admin/orders`, `/admin/pos`, `/admin/inventory`, `/admin/giveaway`.
+- **Fase 5**: `src/app/reseller/page.tsx` & `src/app/giveaway/page.tsx`.

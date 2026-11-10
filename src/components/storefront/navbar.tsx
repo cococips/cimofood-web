@@ -4,31 +4,40 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Database,
+  Clock,
   Flame,
   Gift,
   LayoutDashboard,
+  LogIn,
+  LogOut,
   Menu,
+  MessageCircle,
   PackageSearch,
+  ShieldCheck,
   ShoppingBag,
   Sparkles,
   Store,
   Users,
   X,
 } from "lucide-react";
-import { Button } from "@/components/ui";
-import { getDataLayerStatus } from "@/lib/supabase";
+import { Button, useToast } from "@/components/ui";
 import { formatRupiah } from "@/lib/utils";
+import { useAuthStore } from "@/store/auth-store";
 import { computeCartSummary, useCartStore } from "@/store/cart-store";
 
 export function StorefrontNavbar() {
   const pathname = usePathname();
+  const { showToast } = useToast();
 
   const items = useCartStore((s) => s.items);
   const isResellerMode = useCartStore((s) => s.isResellerMode);
   const referralCode = useCartStore((s) => s.referralCode);
-  const setResellerMode = useCartStore((s) => s.setResellerMode);
   const setCartDrawerOpen = useCartStore((s) => s.setCartDrawerOpen);
+
+  const role = useAuthStore((s) => s.role);
+  const reseller = useAuthStore((s) => s.reseller);
+  const logout = useAuthStore((s) => s.logout);
+  const syncCartWithRole = useAuthStore((s) => s.syncCartWithRole);
 
   const [mounted, setMounted] = React.useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
@@ -38,11 +47,18 @@ export function StorefrontNavbar() {
 
   React.useEffect(() => {
     setMounted(true);
+    syncCartWithRole();
     setActiveHash(window.location.hash);
     const onHashChange = () => setActiveHash(window.location.hash);
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
-  }, []);
+  }, [syncCartWithRole]);
+
+  React.useEffect(() => {
+    if (mounted) {
+      syncCartWithRole();
+    }
+  }, [role, mounted, syncCartWithRole]);
 
   React.useEffect(() => {
     if (typeof window !== "undefined") {
@@ -67,7 +83,16 @@ export function StorefrontNavbar() {
     prevCountRef.current = summary.totalItems;
   }, [summary.totalItems, mounted]);
 
-  const dataLayerStatus = getDataLayerStatus();
+  const handleLogout = () => {
+    logout();
+    setIsMobileMenuOpen(false);
+    showToast({
+      type: "info",
+      title: "Berhasil Keluar Akun",
+      description:
+        "Anda kini berbelanja menggunakan Harga Eceran Resmi Web CimoFood.",
+    });
+  };
 
   const navLinks = [
     {
@@ -112,67 +137,105 @@ export function StorefrontNavbar() {
     },
   ];
 
+  const effectiveRole = mounted ? role : "guest";
+
   return (
     <>
-      {/* TOP UTILITY BAR (Dark Background: Left Promo Info | Right Price Switcher, DB Status & Admin Link) */}
+      {/* TOP UTILITY BAR (Dark Background: Left Promo & SOP 4-Layer Guarantee | Right Service Hours, WA Help & Role Auth Controls) */}
       <div className="bg-stone-950 border-b border-stone-800 text-stone-200 text-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-10 flex items-center justify-between gap-4">
-          {/* Left Promo Info */}
+          {/* Left Promo Info & 4-Layer Packing Guarantee */}
           <div className="flex items-center gap-2 min-w-0 truncate">
             <Flame className="h-3.5 w-3.5 text-amber-400 fill-amber-400 shrink-0" />
             <span className="truncate font-medium text-stone-200">
               <strong className="text-white">
                 CimoFood Resmi UMKM Cimoring
               </strong>{" "}
-              <span className="hidden sm:inline">
+              <span className="hidden md:inline">
                 — Harga Lebih Hemat dari Marketplace &amp; Garansi Packing SOP 4
                 Lapis!
               </span>
             </span>
           </div>
 
-          {/* Right Utility Controls (Compact Pills, Single-Line) */}
-          <div className="flex items-center gap-2 shrink-0 whitespace-nowrap">
-            {/* Compact Pill Switcher: Harga Web | Harga Reseller */}
-            <div className="hidden md:inline-flex items-center bg-stone-900 border border-stone-700 rounded-full p-0.5 text-[11px]">
-              <button
-                type="button"
-                onClick={() => setResellerMode(false)}
-                className={`px-2.5 py-0.5 rounded-full font-bold transition-all cursor-pointer whitespace-nowrap ${
-                  !isResellerMode
-                    ? "bg-[#EA580C] text-white shadow-xs"
-                    : "text-stone-400 hover:text-white"
-                }`}
-              >
-                Harga Web
-              </button>
-              <button
-                type="button"
-                onClick={() => setResellerMode(true)}
-                className={`px-2.5 py-0.5 rounded-full font-bold transition-all cursor-pointer whitespace-nowrap ${
-                  isResellerMode
-                    ? "bg-amber-500 text-stone-950 shadow-xs"
-                    : "text-stone-400 hover:text-white"
-                }`}
-              >
-                Harga Reseller
-              </button>
-            </div>
-
-            {/* Supabase Cloud Status Pill */}
-            <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-stone-900 border border-stone-700 px-2.5 py-1 text-[11px] font-semibold text-stone-300 whitespace-nowrap">
-              <Database className="h-3 w-3 text-emerald-400 shrink-0" />
-              <span>{dataLayerStatus.label}</span>
+          {/* Right Customer Utility & RBAC Session Controls */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0 whitespace-nowrap">
+            {/* Jam Layanan */}
+            <span className="hidden xl:inline-flex items-center gap-1.5 text-[11px] font-medium text-stone-300">
+              <Clock className="h-3 w-3 text-amber-400 shrink-0" />
+              <span>Jam Layanan: 08.00 - 20.00 WIB</span>
             </span>
 
-            {/* Quick Access Link: Dasbor Admin */}
-            <Link
-              href="/admin"
-              className="inline-flex items-center gap-1.5 rounded-full bg-stone-800 hover:bg-[#EA580C] border border-stone-700 hover:border-orange-500 px-3 py-1 text-[11px] font-bold text-white transition-colors whitespace-nowrap"
+            {/* Bantuan WhatsApp */}
+            <a
+              href="https://wa.me/6281223344556?text=Halo%20Admin%20CimoFood%2C%20saya%20ingin%20bertanya%20mengenai%20produk%20Cimoring"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-stone-900 hover:bg-emerald-950/80 border border-stone-700 hover:border-emerald-500/50 px-2.5 py-1 text-[11px] font-semibold text-emerald-300 transition-colors"
             >
-              <LayoutDashboard className="h-3 w-3 shrink-0" />
-              <span>Dasbor Admin</span>
-            </Link>
+              <MessageCircle className="h-3 w-3 shrink-0" />
+              <span>Bantuan WhatsApp</span>
+            </a>
+
+            {/* Role-Based Action Controls */}
+            {effectiveRole === "guest" && (
+              <Link
+                href="/login"
+                className="inline-flex items-center gap-1.5 rounded-full bg-stone-800 hover:bg-[#EA580C] border border-stone-700 hover:border-orange-500 px-3 py-1 text-[11px] font-bold text-white transition-colors"
+              >
+                <LogIn className="h-3 w-3 text-amber-300 shrink-0" />
+                <span>Masuk Mitra / Admin</span>
+              </Link>
+            )}
+
+            {effectiveRole === "reseller" && (
+              <div className="inline-flex items-center gap-1.5">
+                <Link
+                  href="/reseller"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/20 border border-amber-400/50 px-2.5 py-1 text-[11px] font-extrabold text-amber-300 hover:bg-amber-500/30 transition-colors"
+                >
+                  <ShieldCheck className="h-3 w-3 text-amber-400 shrink-0" />
+                  <span>Mode Harga Reseller Aktif</span>
+                  {reseller?.full_name && (
+                    <span className="hidden md:inline text-white font-bold">
+                      • {reseller.full_name}
+                    </span>
+                  )}
+                </Link>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="inline-flex items-center gap-1 rounded-full bg-stone-800 hover:bg-red-900/80 border border-stone-700 hover:border-red-500/50 px-2.5 py-1 text-[11px] font-bold text-stone-200 hover:text-white transition-colors cursor-pointer"
+                >
+                  <LogOut className="h-3 w-3 shrink-0" />
+                  <span>Keluar</span>
+                </button>
+              </div>
+            )}
+
+            {effectiveRole === "admin" && (
+              <div className="inline-flex items-center gap-1.5">
+                <span className="hidden md:inline-flex items-center gap-1 rounded-full bg-emerald-500/20 border border-emerald-400/40 px-2.5 py-1 text-[11px] font-extrabold text-emerald-300">
+                  <ShieldCheck className="h-3 w-3 shrink-0" />
+                  <span>Admin Aktif</span>
+                </span>
+                <Link
+                  href="/admin"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-[#EA580C] hover:bg-[#C2410C] px-3 py-1 text-[11px] font-bold text-white transition-colors"
+                >
+                  <LayoutDashboard className="h-3 w-3 shrink-0" />
+                  <span>Buka Panel Admin</span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="inline-flex items-center gap-1 rounded-full bg-stone-800 hover:bg-red-900/80 border border-stone-700 hover:border-red-500/50 px-2.5 py-1 text-[11px] font-bold text-stone-200 hover:text-white transition-colors cursor-pointer"
+                >
+                  <LogOut className="h-3 w-3 shrink-0" />
+                  <span>Keluar</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -278,38 +341,78 @@ export function StorefrontNavbar() {
         {/* Responsive Hamburger Menu Drawer for Mobile / Small Tablet */}
         {isMobileMenuOpen && (
           <div className="lg:hidden border-t border-[#F3E8D6] bg-[#FFFBEB] px-4 py-4 space-y-4 shadow-lg">
-            {/* Mobile Price Mode Switcher */}
-            <div className="flex items-center justify-between bg-white p-2.5 rounded-2xl border border-orange-200">
-              <span className="text-xs font-bold text-stone-700 whitespace-nowrap">
-                Mode Harga Katalog:
-              </span>
-              <div className="flex items-center gap-1 bg-orange-100/80 p-1 rounded-xl">
-                <button
-                  type="button"
-                  onClick={() => setResellerMode(false)}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold cursor-pointer whitespace-nowrap ${
-                    !isResellerMode
-                      ? "bg-[#EA580C] text-white"
-                      : "text-stone-700"
-                  }`}
-                >
-                  Harga Web
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setResellerMode(true)}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold cursor-pointer whitespace-nowrap ${
-                    isResellerMode
-                      ? "bg-[#C2410C] text-white"
-                      : "text-stone-700"
-                  }`}
-                >
-                  Harga Reseller
-                </button>
-              </div>
+            {/* Mobile Role Status & Service Info Banner */}
+            <div className="rounded-2xl bg-white p-3.5 border border-orange-200 flex items-center justify-between gap-3">
+              {effectiveRole === "guest" ? (
+                <>
+                  <div>
+                    <span className="text-[11px] font-bold text-stone-500 block">
+                      Status Akun Belanja
+                    </span>
+                    <span className="text-xs font-extrabold text-stone-900">
+                      Pembeli Eceran Resmi
+                    </span>
+                  </div>
+                  <Link
+                    href="/login"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#EA580C] text-white text-xs font-bold whitespace-nowrap"
+                  >
+                    <LogIn className="h-3.5 w-3.5" />
+                    <span>Masuk Mitra / Admin</span>
+                  </Link>
+                </>
+              ) : effectiveRole === "reseller" ? (
+                <>
+                  <div>
+                    <span className="text-[11px] font-extrabold text-[#C2410C] block">
+                      Mode Harga Reseller Aktif
+                    </span>
+                    <span className="text-xs font-black text-stone-900">
+                      {reseller?.full_name} ({reseller?.referral_code})
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-stone-900 text-white text-xs font-bold cursor-pointer"
+                  >
+                    <LogOut className="h-3.5 w-3.5" />
+                    <span>Keluar</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <span className="text-[11px] font-extrabold text-emerald-700 block">
+                      Mode Pengelola Aktif
+                    </span>
+                    <span className="text-xs font-black text-stone-900">
+                      Admin Owner CimoFood
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Link
+                      href="/admin"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-[#EA580C] text-white text-xs font-bold"
+                    >
+                      <LayoutDashboard className="h-3.5 w-3.5" />
+                      <span>Panel Admin</span>
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="inline-flex items-center gap-1 px-2.5 py-2 rounded-xl bg-stone-900 text-white text-xs font-bold cursor-pointer"
+                    >
+                      <LogOut className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
 
-            {/* 5 Main Navigation Links + Admin Quick Link */}
+            {/* 5 Main Navigation Links */}
             <div className="grid grid-cols-2 gap-2">
               {navLinks.map((nav) => {
                 const Icon = nav.icon;
@@ -337,14 +440,23 @@ export function StorefrontNavbar() {
                 );
               })}
 
-              <Link
-                href="/admin"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="flex items-center gap-2.5 p-3 rounded-xl border border-stone-300 bg-stone-900 text-white text-xs font-semibold whitespace-nowrap"
+              <a
+                href="https://wa.me/6281223344556?text=Halo%20Admin%20CimoFood%2C%20saya%20butuh%20bantuan%20pesanan"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2.5 p-3 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 text-xs font-semibold whitespace-nowrap"
               >
-                <LayoutDashboard className="h-4 w-4 shrink-0 text-amber-400" />
-                <span className="whitespace-nowrap">Dasbor Admin</span>
-              </Link>
+                <MessageCircle className="h-4 w-4 shrink-0 text-emerald-600" />
+                <span className="whitespace-nowrap">Bantuan WhatsApp</span>
+              </a>
+            </div>
+
+            <div className="flex items-center justify-between text-[11px] text-stone-500 pt-1 px-1">
+              <span className="inline-flex items-center gap-1">
+                <Clock className="h-3.5 w-3.5 text-[#EA580C]" />
+                Jam Layanan: 08.00 - 20.00 WIB
+              </span>
+              <span>P-IRT &amp; Halal Resmi</span>
             </div>
           </div>
         )}

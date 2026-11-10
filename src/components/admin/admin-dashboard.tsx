@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import confetti from "canvas-confetti";
 import {
   AlertTriangle,
@@ -18,6 +19,9 @@ import {
   Eye,
   Flame,
   Gift,
+  Lock,
+  LogIn,
+  LogOut,
   MessageCircle,
   Minus,
   PackageCheck,
@@ -57,6 +61,8 @@ import {
   formatDateID,
   formatRupiah,
 } from "@/lib/utils";
+import { useAuthStore } from "@/store/auth-store";
+import { useCartStore } from "@/store/cart-store";
 import type {
   GiveawayParticipant,
   OrderWithItems,
@@ -111,8 +117,20 @@ export function AdminDashboard({
 }: {
   initialTab?: AdminTabId;
 }) {
+  const router = useRouter();
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = React.useState<AdminTabId>(initialTab);
+  const [mounted, setMounted] = React.useState(false);
+
+  const role = useAuthStore((s) => s.role);
+  const adminUser = useAuthStore((s) => s.adminUser);
+  const logout = useAuthStore((s) => s.logout);
+  const isResellerMode = useCartStore((s) => s.isResellerMode);
+  const setResellerMode = useCartStore((s) => s.setResellerMode);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const [products, setProducts] = React.useState<ProductWithVariants[]>([]);
   const [orders, setOrders] = React.useState<OrderWithItems[]>([]);
@@ -520,6 +538,93 @@ export function AdminDashboard({
   const activeNavMeta =
     navItems.find((n) => n.id === activeTab) || navItems[0];
 
+  const handleAdminLogout = () => {
+    logout();
+    showToast({
+      type: "info",
+      title: "Berhasil Keluar dari Dasbor Admin",
+      description: "Sesi pengelola telah diakhiri dengan aman.",
+    });
+    router.push("/login");
+  };
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white text-sm font-bold">
+        Memeriksa Otorisasi Admin CimoFood...
+      </div>
+    );
+  }
+
+  // PROTEKSI RBAC: HANYA ROLE ADMIN YANG DAPAT MENGAKSES /ADMIN
+  if (role !== "admin") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white p-4 sm:p-6">
+        <Card className="max-w-lg w-full p-6 sm:p-8 bg-slate-900 border-2 border-slate-800 text-white space-y-6 shadow-2xl">
+          <div className="h-14 w-14 rounded-2xl bg-orange-500/20 border border-orange-500/40 flex items-center justify-center text-orange-400">
+            <Lock className="h-7 w-7" />
+          </div>
+
+          <div className="space-y-2">
+            <Badge variant="chili" size="sm">
+              Area Terproteksi Role-Based Access Control (RBAC)
+            </Badge>
+            <h1 className="text-2xl font-black tracking-tight text-white">
+              Akses Terbatas Khusus Admin CimoFood
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              Halaman Dasbor Operasional 8 Tahap, Kasir POS Offline, Kontrol
+              Stok, dan Laporan Keuangan hanya dapat diakses oleh{" "}
+              <strong className="text-amber-300">
+                Pengelola CimoFood &amp; Owner UMKM Cimoring
+              </strong>
+              .
+            </p>
+          </div>
+
+          <div className="rounded-2xl bg-slate-800/80 border border-slate-700 p-4 text-xs text-slate-300 space-y-1">
+            <p className="font-bold text-amber-300">
+              Status Sesi Anda Saat Ini:{" "}
+              <span className="uppercase text-white">
+                {role === "reseller"
+                  ? "Mitra Reseller"
+                  : "Pengunjung Publik (Guest)"}
+              </span>
+            </p>
+            <p>
+              Silakan masuk menggunakan akun resmi Admin (
+              <code>admin@cimofood.id</code>) pada halaman autentikasi.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <Link href="/login?redirect=/admin" className="w-full">
+              <Button
+                variant="primary"
+                size="admin"
+                fullWidth
+                leftIcon={<LogIn className="h-5 w-5" />}
+              >
+                Masuk Akun Admin
+              </Button>
+            </Link>
+            <Link href="/" className="w-full">
+              <Button
+                variant="outline"
+                size="admin"
+                fullWidth
+                leftIcon={<Store className="h-5 w-5" />}
+                className="bg-slate-800 text-white border-slate-700 hover:bg-slate-700"
+              >
+                Ke Etalase Pembeli
+              </Button>
+            </Link>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col md:flex-row theme-admin">
       {/* LEFT SIDEBAR: LAPTOP & TABLET FIRST (md:flex, large touch targets >= 48px) */}
@@ -535,14 +640,14 @@ export function AdminDashboard({
                   Cimo<span className="text-[#EA580C]">Food</span> Admin
                 </span>
                 <span className="text-xs text-slate-400">
-                  Laptop &amp; Tablet First UI
+                  {adminUser?.name || "Laptop & Tablet First UI"}
                 </span>
               </div>
             </Link>
           </div>
 
           <div className="rounded-2xl bg-slate-800/90 border border-slate-700 p-3.5 flex items-center gap-2.5 text-xs">
-            <Database className="h-4 w-4 text-amber-400 shrink-0" />
+            <Database className="h-4 w-4 text-emerald-400 shrink-0" />
             <span className="font-semibold text-slate-200 truncate">
               {dataLayer.label}
             </span>
@@ -625,6 +730,16 @@ export function AdminDashboard({
           >
             Reset Data Demo
           </Button>
+          <Button
+            variant="ghost"
+            size="admin"
+            fullWidth
+            leftIcon={<LogOut className="h-4 w-4 text-red-400" />}
+            className="text-red-300 hover:text-white hover:bg-red-950/60"
+            onClick={handleAdminLogout}
+          >
+            Keluar Akun Admin
+          </Button>
         </div>
       </aside>
 
@@ -647,6 +762,38 @@ export function AdminDashboard({
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
+            {/* Indikator Status Teknis Supabase Cloud (Dipindahkan dari Publik ke Header Admin) */}
+            <span className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 text-white px-3.5 py-2 text-xs font-bold border border-slate-700">
+              <Database className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+              <span>{dataLayer.label}</span>
+            </span>
+
+            {/* Simulasi Mode Harga Etalase (Khusus Admin) */}
+            <div className="hidden xl:inline-flex items-center bg-slate-100 border border-slate-300 rounded-xl p-1 text-xs">
+              <button
+                type="button"
+                onClick={() => setResellerMode(false)}
+                className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                  !isResellerMode
+                    ? "bg-[#EA580C] text-white"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Simulasi Harga Web
+              </button>
+              <button
+                type="button"
+                onClick={() => setResellerMode(true)}
+                className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                  isResellerMode
+                    ? "bg-amber-500 text-slate-950"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Simulasi Reseller
+              </button>
+            </div>
+
             <Button
               variant={activeTab === "pos" ? "primary" : "outline"}
               size="admin"
@@ -676,6 +823,15 @@ export function AdminDashboard({
               }}
             >
               Export Laporan ke Excel (.xlsx)
+            </Button>
+            <Button
+              variant="outline"
+              size="admin"
+              leftIcon={<LogOut className="h-5 w-5 text-red-600" />}
+              onClick={handleAdminLogout}
+              className="border-red-200 text-red-700 hover:bg-red-50"
+            >
+              Keluar
             </Button>
           </div>
         </header>
